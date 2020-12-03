@@ -15,7 +15,7 @@ from matplotlib.pyplot import figure
 
 
 #Simulation Constants
-delta_t = 1                   #time increments
+delta_t = 0.1                   #time increments
 t = np.arange(0,100,delta_t)
 np.random.seed(1)                 #set the random number seed
 
@@ -34,12 +34,6 @@ Range_sd = 2
 
 M = np.diag([W_omega_sd, W_v_sd]) **2  # Input Noise
 R = np.diag([Angle_sd, Range_sd]) **2  # Observation Sensor Noise
-
-
-# In[ ]:
-
-
-
 
 
 # In[3]:
@@ -70,8 +64,7 @@ class Agent:
     def Time_update(robot, u):  
         '''
         Updates the state and state covariance 
-        '''
-        
+        ''' 
         #Calculate the Jacobian of f(x,u), F and B
         Fj, Bj = calc_jacob_of_state(robot.X,u)
     
@@ -150,9 +143,7 @@ class Agent:
         
         #Update the state covariance usinf matrix inversion lemma
         #robot.P_est = np.linalg.inv(np.linalg.inv(robot.P_est)+ H.T @ np.linalg.inv(R) @ H)
-        
-        
-        
+      
         return robot.X, robot.P_est, y
 
 
@@ -161,14 +152,14 @@ class Agent:
 def calc_jacob_of_state(x, u):
     
     #Jakobian of f wrt x
-    jF = delta_t * np.array([[1,                    0, 0], 
-                             [-u[1] * np.sin(x[0]), 1, 0],
-                             [u[1] * np.cos(x[0]),  0, 1]])
+    jF =  np.array([[1,                               0, 0], 
+                    [-u[1] *  delta_t * np.sin(x[0]), 1, 0],
+                    [u[1] * delta_t * np.cos(x[0]),  0, 1]])
 
     
 
     #Jacobian of f wrt u
-    jB = delta_t * np.array([[1,         0],
+    jB = delta_t * np.array([[1,            0],
                              [0, np.cos(x[0])],
                              [0, np.sin(x[0])]])
  
@@ -214,29 +205,11 @@ def pi_2_pi(angle):
     return (angle + math.pi) % (2 * math.pi) - math.pi
 
     
-def get_input(input_cov): 
-    
-    #input velocities
- 
-    u_v_t = np.ones(len(t)) * 5
-    u_omega_t = np.ones(len(t)) * 0.1             #angular velocity
-    
-    #Noises
-    W_v_t =(np.random.normal(0,np.sqrt(input_cov[1,1]),len(t)))
-    W_omega_t = np.random.normal(0,np.sqrt(input_cov[0,0]),len(t))
-    
-    #Input + noise
-    u_v_t = u_v_t + W_v_t
-    u_omega_t = u_omega_t + W_omega_t
-    
-    return np.vstack((u_omega_t,u_v_t)).T            #To get the the inputs in pars for [u_v,u_w] at time t
-
-
-# def get_input(input_cov):
+# def get_input(input_cov): 
     
 #     #input velocities
-#     max_velocity = 5
-#     u_v_t = np.arange(0,max_velocity,max_velocity/len(t))
+ 
+#     u_v_t = np.ones(len(t)) * 5
 #     u_omega_t = np.ones(len(t)) * 0.1             #angular velocity
     
 #     #Noises
@@ -250,8 +223,25 @@ def get_input(input_cov):
 #     return np.vstack((u_omega_t,u_v_t)).T            #To get the the inputs in pars for [u_v,u_w] at time t
 
 
-# In[4]:
+def get_input(input_cov):
+    
+    #input velocities
+    max_velocity = 5
+    u_v_t = np.arange(0,max_velocity,max_velocity/len(t))
+    u_omega_t = np.ones(len(t)) * 0.1             #angular velocity
+    
+    #Noises
+    W_v_t =(np.random.normal(0,np.sqrt(input_cov[1,1]),len(t)))
+    W_omega_t = np.random.normal(0,np.sqrt(input_cov[0,0]),len(t))
+    
+    #Input + noise
+    u_v_t = u_v_t + W_v_t
+    u_omega_t = u_omega_t + W_omega_t
+    
+    return np.vstack((u_omega_t,u_v_t)).T            #To get the the inputs in pars for [u_v,u_w] at time t
 
+
+# In[4]:
 
 
 print("start!")
@@ -284,7 +274,6 @@ cov_list_det = list()
 
 
 
-
 for i in range(len(t)-1):
     
     
@@ -301,7 +290,7 @@ for i in range(len(t)-1):
     cov_list_det = np.append(cov_list_det,np.sqrt(np.linalg.det(P_est[i,:,:])))
     
 
-    if(i%1== 0):
+    if(i%10 == 0 and i!=0):
         #calc ovservation to get z
         Z[i] = My_robot_true.observe(landmark1,R)  #Observation from the true trajectory to the lnadmrk 
                                                    #then observ. noise added here
@@ -324,12 +313,6 @@ d_tr_est = np.sqrt((true_X[:,1]-X_est[:,1])**2 + (true_X[:,2]-X_est[:,2])**2)
 theta_tr_est = 1- np.cos(true_X[:,0]-X_est[:,0])
 
 print("Done!")
-
-
-# In[ ]:
-
-
-
 
 
 # In[5]:
@@ -356,12 +339,6 @@ ax1.title.set_text('Trajectories')
 ax1.legend()
 ax1.set_xlabel('x1')
 ax1.set_ylabel ('x2')
-
-
-# In[ ]:
-
-
-
 
 
 # In[6]:
@@ -416,35 +393,6 @@ ax5.set_ylabel('P_est_determinant')
 ax5.grid(True)
 plt.tight_layout()
 plt.show()
-
-
-# In[ ]:
-
-
-
-
-
-# In[8]:
-
-
-# x = np.arange(0,np.pi/3,np.pi/12)
-# u = 5
-# F = delta_t * np.array([[1,                    0, 0], 
-#                         [-u * np.sin(x), 1, 0],
-#                         [u * np.cos(x),  0, 1]])
-
-
-
-# plt.plot(np.rad2deg(x))
-
-
-# In[9]:
-
-
-Q = np.array([[ 0.1, 0, 0],
-                     [ 0,  0.1, -0.1],
-                     [ 0, -0.1,  0.01]])
-   
 
 
 # In[ ]:
